@@ -1,0 +1,18 @@
+{
+    "prd": {
+      "username": "prod.user@company.com",
+      "password": "prod_password",
+      "security_token": "prod_token"
+    },
+    "uat": {
+      "username": "uat_user",
+      "password": "uat_password",
+      "security_token": "uat_token"
+    },
+
+    "dev": {
+      "username": "dev.user@company.com",
+      "password": "dev_password",
+      "security_token": "dev_token"
+    }
+  }
