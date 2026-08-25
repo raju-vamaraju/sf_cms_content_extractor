@@ -1,4 +1,5 @@
 import csv
+import json
 import requests
 import sys
 
@@ -16,10 +17,40 @@ API_VERSION = "67.0"
 
 ASSET_CSV = "cms_asset_inventory.csv"
 CONTENT_CSV = "cms_content_inventory.csv"
+STATUS_FILE = "status.json"
+TOTAL_PAGES_ESTIMATE = 62
+
+def update_status(
+    job,
+    status,
+    current_page,
+    asset_records,
+    percent
+):
+
+    with open(
+        STATUS_FILE,
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        json.dump(
+            {
+                "job": job,
+                "status": status,
+                "current_page": current_page,
+                "asset_records": asset_records,
+                "percent": round(percent, 2)
+            },
+            f,
+            indent=2
+        )
 
 # ===================================================
 # LOGIN
 # ===================================================
+
+
 
 sf = get_sf(ENVIRONMENT)
 
@@ -66,6 +97,8 @@ print(
     f"Loaded {len(folder_lookup)} ManagedContent records"
 )
 
+
+
 # ===================================================
 # ASSET CSV
 # ===================================================
@@ -86,6 +119,7 @@ asset_writer = csv.DictWriter(
         "Title",
         "Type",
         "FileName",
+        "UniqueFileName",
         "DownloadUrl",
         "Status",
         "RetryCount",
@@ -132,6 +166,14 @@ page = 0
 asset_count = 0
 content_count = 0
 
+update_status(
+    "BUILD_INVENTORY",
+    "STARTING",
+    0,
+    0,
+    0
+)
+
 while True:
 
     url = (
@@ -165,6 +207,14 @@ while True:
 
     print(
         f"Page {page}: {len(items)} records"
+    )
+
+    update_status(
+        "BUILD_INVENTORY",
+        "RUNNING",
+        page,
+        asset_count,
+        ((page + 1) / TOTAL_PAGES_ESTIMATE) * 100
     )
 
     for item in items:
@@ -217,18 +267,43 @@ while True:
 
             if resource_url:
 
-                download_url = (
-                    f"{instance_url}"
-                    f"{resource_url}"
-                )
+                if resource_url.startswith(
+                    ("http://", "https://")
+                ):
+
+                    download_url = resource_url
+
+                else:
+
+                    download_url = (
+                        f"{instance_url}"
+                        f"{resource_url}"
+                    )
 
             elif static_url:
 
-                download_url = (
-                    f"{instance_url}"
-                    f"{static_url}"
-                )
+                if static_url.startswith(
+                    ("http://", "https://")
+                ):
 
+                    download_url = static_url
+
+                else:
+
+                    download_url = (
+                        f"{instance_url}"
+                        f"{static_url}"
+                    )
+
+            content_key = item.get(
+                "contentKey"
+            )
+
+            unique_file_name = (
+                f"{content_key}_{file_name}"
+            )
+            
+            
             asset_writer.writerow({
 
                 "ManagedContentId":
@@ -254,6 +329,9 @@ while True:
 
                 "FileName":
                     file_name,
+
+                "UniqueFileName":
+                    unique_file_name,
 
                 "DownloadUrl":
                     download_url,
@@ -326,6 +404,14 @@ while True:
 
 asset_file.close()
 content_file.close()
+
+update_status(
+    "BUILD_INVENTORY",
+    "COMPLETE",
+    page,
+    asset_count,
+    100
+)
 
 # ===================================================
 # SUMMARY

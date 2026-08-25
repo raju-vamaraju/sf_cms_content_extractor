@@ -1,16 +1,20 @@
 import json
 from pathlib import Path
 
+import requests
+import urllib3
 from simple_salesforce import Salesforce
-
 
 CONFIG_FILE = "config.json"
 
+# TEMPORARY
+# Disable SSL warnings while developing
+urllib3.disable_warnings(
+    urllib3.exceptions.InsecureRequestWarning
+)
+
 
 def get_config(environment):
-    """
-    Returns configuration for an environment.
-    """
 
     config_path = Path(CONFIG_FILE)
 
@@ -20,6 +24,7 @@ def get_config(environment):
     environment = environment.lower()
 
     if environment not in config:
+
         raise ValueError(
             f"Environment '{environment}' not found in config.json"
         )
@@ -28,12 +33,6 @@ def get_config(environment):
 
 
 def get_sf(environment):
-    """
-    Returns authenticated Salesforce object.
-
-    prd   -> login
-    other -> test
-    """
 
     cfg = get_config(environment)
 
@@ -48,17 +47,26 @@ def get_sf(environment):
         f"using domain [{sf_domain}]..."
     )
 
+    session = requests.Session()
+
+    #
+    # TEMP FIX FOR CORPORATE SSL
+    #
+    session.verify = False
+
     sf = Salesforce(
         username=cfg["username"],
         password=cfg["password"],
         security_token=cfg["security_token"],
-        domain=sf_domain
+        domain=sf_domain,
+        session=session
     )
 
     return sf
 
 
 def get_instance_url(sf):
+
     return f"https://{sf.sf_instance}"
 
 

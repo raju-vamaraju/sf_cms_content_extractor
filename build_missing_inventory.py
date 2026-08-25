@@ -1,5 +1,6 @@
 import csv
 import sys
+import json
 
 from login import get_sf
 
@@ -49,7 +50,8 @@ SELECT Id,
        ContentKey,
        CreatedDate,
        LastModifiedDate,
-       AuthoredManagedContentSpace.Name
+       AuthoredManagedContentSpace.Name,
+       ExternalId 
 FROM ManagedContent
 """
 
@@ -215,3 +217,28 @@ print(
 print(
     f"Records: {len(missing_records)}"
 )
+
+def update_status(
+    current_page,
+    asset_records,
+    percent,
+    status="RUNNING"
+):
+
+    with open(
+        "status.json",
+        "w"
+    ) as f:
+
+        json.dump(
+            {
+                "job": "BUILD_INVENTORY",
+                "status": status,
+                "current_page": current_page,
+                "total_pages": 62,
+                "asset_records": asset_records,
+                "percent": percent
+            },
+            f,
+            indent=2
+        )
